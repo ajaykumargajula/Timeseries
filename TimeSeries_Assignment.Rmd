@@ -1,0 +1,119 @@
+---
+title: "Time_Series_Assignment"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tseries)
+library(forecast)
+class(gas)
+```
+
+class of dataset is "ts", which refer to timeseries
+
+```{r}
+frequency(gas)
+```
+
+The Periodicity of Dataset is 12(Monthly)
+
+```{r}
+gas
+```
+
+Timeseries Data is available from January-1956 to August-1995
+
+```{r}
+plot(gas)
+abline(reg = lm(gas~time(gas)))
+```
+```{r}
+boxplot(gas~cycle(gas),xlab = "Month",ylab = "Australian Gas Production")
+```
+
+```{r}
+library(forecast)
+seasonplot(gas,col = rainbow(12))
+```
+
+###Observation:
+
+>The Gas production increase over time with each year which may be indicative of an increasing linear trend.
+
+>In the boxplot there is more production of Gas during months May to August with higher means and higher variances than the other months, indicating seasonality with a apparent cycle of 12 months. 
+
+###Data Stationarity Check
+
+The Australian Gas Production dataset in not stationary, becasue the abline indicate bothe the mean and variance are not constant. To validate this, KPSS test can be Performed
+
+H0: Series is Stationary
+Ha: Series is not stationary
+
+```{r}
+kpss.test(gas)
+```
+
+The P-Value from this test is 0.01 and we reject Null hypothesis, which indicates that the series is not stationary.
+
+To make the series stationry,some transformation functions are used
+
+>Log transformation to variance constant
+
+>Differencing can be used to make mean as constant over time.
+
+```{r}
+#plot(diff(log(gas)))
+plot(diff(diff(log(gas))))
+abline(h=0)
+```
+
+```{r}
+kpss.test(diff(diff(log(gas))))
+```
+
+
+The P-Value from this test is 0.1 and we accept Null hypothesis, which indicates that the series is stationary.
+
+
+### ARIMA Model
+
+####PACF Plot
+
+To determine how many previous periods required to forecast next peiods
+
+```{r}
+pacf(diff(diff(log(gas))))
+```
+
+P=1
+
+### ACF plot
+
+How many previous errors are impacting the value to be forecasted.
+
+```{r}
+acf(diff(diff(log(gas))))
+```
+q=2
+
+
+```{r}
+arima_model=arima(log(gas),c(1,2,2),seasonal = list(order=c(1,2,2),period=12))
+summary(arima_model)
+```
+```{r}
+arima_pred<-forecast(arima_model,12)
+plot(forecast(arima_pred,12))
+```
+
+```{r}
+accuracy(arima_pred)
+```
+
+
+
+

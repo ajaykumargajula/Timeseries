@@ -1,0 +1,47 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+www<-"D:\\BABI\\GL\\Time Series\\Maine.dat"
+maine.table<-read.table(www,header = T)
+attach(maine.table)
+class(maine.table)
+```
+
+When we read data in this way from an ASCII text file, the 'class' is not time series but data.frame. The ts function is used to convert the data to a time series object.
+
+```{r}
+maine.month.ts<-ts(unemploy,start = c(1996,1),frequency = 12)
+class(maine.month.ts)
+maine.annual.ts<-aggregate(maine.month.ts)/12
+```
+
+```{r}
+layout(1:2)
+plot(maine.month.ts,ylab="month_unemployed (%)")
+plot(maine.annual.ts,ylab="Annual_unemployed (%)")
+
+```
+
+We can calculate the precise percentages in R, using window. This function will extract that part of the time series between specified start and end points and will sample with an interval equal to frequency if its argument is set to TRUE
+
+```{r}
+maine.feb<-window(maine.month.ts,start=c(1996,2),freq=T)
+maine.aug<-window(maine.month.ts,start=c(1996,8),freq=T)
+feb.ratio<-mean(maine.feb)/mean(maine.month.ts)
+aug.ratio<-mean(maine.aug)/mean(maine.month.ts)
+print(paste("Feb: ", feb.ratio))
+print(paste0("Aug:", aug.ratio))
+```
+On average, unemployment is 22% higher in February and 18% lower in August
+
+```{r}
+USunemp<-read.table("D:\\BABI\\GL\\Time Series\\USunemp.dat",header = T)
+attach(USunemp)
+USunemp.ts<-ts(USunemp,start = c(1996,1),end=c(2006,10),frequency = 12)
+plot(USunemp.ts,ylab="Unemployed %")
+```
+

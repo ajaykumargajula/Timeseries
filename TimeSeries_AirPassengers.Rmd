@@ -1,0 +1,56 @@
+---
+title: "Time Series Using R"
+author: "Ajay Kumar G"
+date: "29 April 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The number of international passenger bookings (in thousands) per month on an airline (Pan Am) in the United States were obtained from the Federal Aviation Administration for the period 1949-1960 (Brown, 1963). The company used the data to predict future demand before ordering new aircraft and training aircrew. The data are available as a time series in R and illustrate several important concepts that arise in an exploratory time series analysis.
+
+```{r}
+
+data(AirPassengers)
+Ap<-AirPassengers
+Ap
+class(Ap)
+start(Ap)
+end(Ap)
+frequency(Ap)
+```
+
+* The object is of class ts, which is an abbreviation for 'timeseries'. 
+* Time series objects have a number of methods available, which include the functions start, end and frequency given above
+
+### Create a Time plot with generic plot function
+
+```{r}
+plot(Ap,ylab="Passengers (1000's)")
+abline(reg=lm(Ap~time(Ap)))
+```
+
+Observation:
+
+### Trend:
+In general, a systematic change in a time series that does not appear to be periodic is known as a trend. The simplest model for a trend is a linear increase or decrease, and this is often an adequate approximation. The number of passengers travelling on the airline is increasing with time
+
+
+### Seasonal:
+A repeating pattern within each year is known as seasonal variation, although the term is applied more generally to repeating patterns within any fixed period, such as restaurant bookings on different days of the week. There is clear seasonal variation in the air passenger time series. At the time, bookings were highest during the summer months of June, July, and August and lowest during the autumn month of November and winter month of February.
+
+
+Plots can be put in a single graphics window using the layout function, which takes as input a vector (or matrix) for the location of each plot in the display window.
+
+```{r}
+layout(1:2)
+plot(aggregate(Ap))
+boxplot(Ap~cycle(Ap))
+```
+
+* To get a clearer view of the trend, the seasonal effect can be removed by aggregating the data to the annual level, which can be achieved in R using the aggregate function.
+* A summary of the values for each season can be viewed using a boxplot, with the cycle function being used to extract the seasons for each item of data.
+
+You can see an increasing trend in the annual series and the seasonal effects in the boxplot. More people travelled during the summer months of June to September

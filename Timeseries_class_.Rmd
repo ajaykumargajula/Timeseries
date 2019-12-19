@@ -1,0 +1,741 @@
+---
+title: "TimeSeries_Class"
+author: "Ajay Kumar G"
+date: "8 June 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tseries)
+library(forecast)
+plot(AirPassengers)
+AirPassengers
+class(AirPassengers)
+
+abline(reg=lm(AirPassengers~time(AirPassengers)))
+```
+> Trend is upward
+> Seasonal component looks to be there in the past dataThere is ireegularity in the past data which needs to be modelled
+> Selection of the model
+
+## Models:
+> ARIMA
+> Simple Exponential Smoothening
+> Holt's Trend Model
+> Winter's Seasonal Model
+
+The model which gives the best accuracy is the final model
+
+Accuracy is measured using MAPE( Mean Absolute Percentage Error) which should be minimum
+
+MAPE=|(At-Ft)/At|*100
+
+## ARIMA:
+Auto Regressive Integrated Moving Average (ARIMA) is a combination of 3 components
+
+1. AR-Auto Regressive
+2. I- Integration Part
+3. MA- Moving Average
+
+### Assumptions for ARIRMA Model
+
++ Series should be Stationary -->> Mean and Variance to be constant
+
+If Varaince is constant then irregularity is minimal
+
+#### Observation: 
+The Airpassenger dataset in not stationary, becasue the abline indicate bothe the mean and variance are not constant. To validate this, KPSS test can be Performed
+
+H0: Series is Stationary
+Ha: Series is not stationary
+
+```{r}
+kpss.test(AirPassengers)
+```
+
+### Observation:
+The P-Value from this test indicates that the series is not stationary.
+
+To make the series stationry,some transformation functions are used
+
+### Transformations 
+
++ Standardization -->> (x-mu)/sigma
+
+>> It is mandatory to perform Standardization while clustering to give equal weightage to all variables
+>> Variance to make constant
+
++ Normalization -->> (x-min)/(max-min)
+
+>> Neural networks
+
+
+#### Make Variance Constant using log
+
+```{r}
+constvar=(log(AirPassengers))
+plot(constvar)
+```
+
+
+### Observation:
+
+The log transormation made the variance constant over time
+
+
+## To make mean constant
+
+In timeseries Differencing can be used to make mean as constant over time. Lesser the Differencing, better it is as we do not tend to loose the Historical data. This may require a change in the transformation FUnction
+
+```{r}
+constmean=diff(constvar)
+plot.new()
+plot(constmean)
+abline(h=0)
+
+```
+Now the series is stationary
+
+```{r}
+kpss.test(constmean)
+```
+
+the P-values from KPSS is 0.1 which indicate that my series is Stationary
+
+### USe the ARIMA on the Stationary Series
+
+> AR (p)
+> I(d)
+> MA(q)
+
+#### Auto Regression (AR) >> p: 
+
+yt+1 = yt + yt-1 + ...... + yt-n + E
+
+To forecast next period, we need to define how many previous previous periods to take
+
+Number of periods is called the "p" value and it is obtained using the PACF plot
+
+#### I(d):
+
+Indicates the number of times Differencing differencing has been done to make the series stationary. IF Differencing is done once then d=1 and the order of integration or d is 1
+
+#### Moving Average (MA) >> q :
+
+How many prevopus errors are impacting the value to be forecasted."q" value is obtained using ACF plot
+
+yt+1 = Et + Et-1 + ...... + Et-n
+
+
+### ACF Plot to get the Value q
+
+In the Auto Correaltion Function plot, correlation between original series and Lagged series are calucalted and plotted
+
+Correlation works for only 2 variables
+
+Example: 
+ACF1 is the correlation between the original serie and Lagged 1 series
+ACF2 is the correlation between the original serie and Lagged 2 series
+
+```{r}
+acf(constmean)
+```
+
+#### Observation:
+
+ACF will always start with 0 From the ACF plot the value of q is 1
+
+### PACF Plot to get the value of p
+
+Partial Auto correlation function plot
+
+it is the correlation between two series and the intervening series is kept constant, so R caluclates pACF1, PACF2, etc..
+PACF1 is the correlation between the original serie and Lagged 1 series
+PACF2 is the correlation between the original serie and Lagged 2 series adjusting for Lagged 1 series
+
+```{r}
+pacf(constmean)
+```
+
+PACF will always start with 1 and the p value is 2
+
+p=2
+d=1
+q=1
+
+
+```{r}
+model<-arima(log(AirPassengers),c(2,1,1),seasonal = list(order=c(2,1,1),period=12))
+```
+
+using the above ARIMA model, let us predict the number of AirPassengers for the next 1 year
+
+```{r}
+pred<-predict(model,n.ahead=12*1)
+predf<-2.718^pred$pred # antilog of log is e^x, where e =20.718
+predf
+```
+
+TO convert an External Dataset into "ts" class
+
+Eample Data set: Shoe sales
+Step:1
+start date: January 2011
+End Date: December 2015
+
+Step2: 
+Import the file to R which should have only 3rd Column which is od data.frame type
+
+Step 3: 
+convert Data.frame to "ts" class
+ts(data,start=c(2011,1),End=c(2015,12),frequency=12)
+
+use the ARIMA modelto forecast the shoe sales for the next 12 months
+
+```{r}
+library(readxl)
+data<-read_xlsx(file.choose())
+shoesales<-data[,3]
+shoesales
+```
+
+```{r}
+shoesales<-ts(shoesales,start=c(2011,1),end = c(2015,12),frequency = 12)
+class(shoesales)
+```
+
+```{r}
+plot(shoesales)
+abline(reg=lm(shoesales~time(shoesales)))
+```
+
+```{r}
+plot.new()
+plot(diff(log(shoesales)))
+abline(h=0)
+```
+
+
+```{r}
+kpss.test(diff(log(shoesales)))
+```
+```{r}
+acf(diff(log(shoesales)))
+```
+ Q=0
+ 
+```{r}
+pacf(diff(log(shoesales)))
+```
+
+
+p=0
+
+```{r}
+model1<-arima(log(shoesales),c(0,1,0),seasonal = list(order=c(0,1,0),period=12))
+summary(model1)
+
+```
+
+```{r}
+pred<-predict(model1,n.ahead=12*1)
+pred<-exp(pred$pred) # antilog of log is e^x, where e =20.718
+pred
+```
+
+```{r}
+accuracy(model1)
+```
+
+*********************************************************************************************************************
+```{r}
+plot(forecast(model1))
+```
+
+
+# Simple Exponential Smoothening (SES)
+For SES the series does not exibit any trend or seasonality and it has only level. This method uses only one smoothening parameter called Alpha
+
+when series is Stationary then SES given better results but also work when series is not stationary
+
+function used: HoltWinters()
+
+HoltWinters(x,alpha,...)
+
+# Holt's trend Model
+It has both level and trend and this uses two smoothening parameters Alpha and Beta in the model
+
+function used: HoltWinters()
+HoltWinters(x,alpha,beta...)
+
+#Winter Seasonal Model
+This is used to capture level, trend and seasonality and it uses 3 smoothening parameters called Aplha,Beta and Gamma
+
+function used: HoltWinters()
+HoltWinters(x,alpha,beta,gamma...)
+
+Dataset inbuilt nhtemp
+
+```{r}
+library(tseries)
+library(forecast)
+class(nhtemp)
+```
+```{r}
+nhtemp
+```
+
+```{r}
+plot(nhtemp)
+abline(reg = lm(nhtemp~time(nhtemp)))
+```
+
+```{r}
+modelses<-HoltWinters(nhtemp,beta = FALSE,gamma = FALSE)
+
+```
+
+alpha value should be between 0 an 1 and it is called smoothening co-efficent.
+
+Alpha =0.19,if the value is close to zero then past data is more important to predict next period and collect more past data, if the value is close to 1 then current data is important to predict next period.
+
+|Note:|unstandard co-efficents will not tell relative importace of varaibles|
+|----|---|
+
+```{r}
+plot(modelses)
+
+```
+
+the graph indicates an overlap of the actual values with the forecasted values for the current dataset
+
+to make a forecast for the next 5 periods
+
+```{r}
+fses<-forecast(modelses,5)
+plot(fses)
+
+```
+
+```{r}
+fses
+
+```
+
+## SES for AirPassenges
+```{r}
+plot(AirPassengers)
+```
+
+```{r}
+sesap<-HoltWinters(AirPassengers,beta = FALSE,gamma = FALSE)
+plot(sesap)
+```
+```{r}
+sesap
+```
+
+```{r}
+sesapf<-forecast(sesap,12)
+accuracy(forecast(sesap,12))
+```
+
+```{r}
+Airp<-as.data.frame(AirPassengers)
+class(Airp)
+ap<-Airp[c(85:144),]
+class(ap)
+
+
+ap<-ts(ap,start=c(1956,1),end=c(1960,12),frequency = 12)
+ap
+```
+```{r}
+apmode<-HoltWinters(ap,beta = FALSE,gamma = FALSE)
+accuracy(forecast(apmode,12))
+plot(apmode)
+```
+```{r}
+apmode
+
+```
+
+## Arima with last 5 years of Air passengers
+
+```{r}
+plot(ap)
+abline(reg = lm(ap~time(ap)))
+```
+
+```{r}
+plot(diff(log(ap)))
+```
+
+```{r}
+kpss.test(diff(log(ap)))
+```
+
+```{r}
+acf(diff(log(ap)))
+```
+q=1
+
+```{r}
+pacf(diff(log(ap)))
+```
+p=1
+
+```{r}
+arima_ap<-arima(log(ap),c(1,1,1),seasonal = list(order=c(1,1,1),period=12))
+summary(arima_ap)
+
+```
+```{r}
+arima_apf<-forecast(arima_ap,12)
+plot(forecast(arima_ap,12))
+```
+
+# Assumpltion-1
+
+## Model Stability
+
+A model is applicable only if residuals are normally distributed
+
+uses Shapiro.test to check normality of residuals
+
+```{r}
+shapiro.test(arima_apf$residuals)
+```
+
+The p-value indicate that the residuals are normally distributed and model is stable.
+
+If the Model is not stable then do not then residuals are not normal and do not use the model
+
+
+# Assumpltion-2
+
+## Errors are not correlated
+
+There should not be any auto correlation between the errors of the historical data set
+
+name of the test for Tine Series: box test
+Name of the test for Lineer regression: Dubrin Watson test
+
+```{r}
+Box.test(arima_apf$residuals,type = "Ljung-Box")
+
+```
+
+the p-value from box test indicate that there is little evidence for non-zero auto-correaltion between the errors which tells the model is stable
+
+******************************************************************************
+
+
+```{r}
+shapiro.test(sesapf$residuals)
+```
+
+```{r}
+Box.test(sesapf$residuals,type = "Ljung-Box")
+
+```
+  
+
+# Holt's trend Model
+
+DataSet:airmiles
+
+```{r}
+plot(airmiles)
+```
+
+Plot is indicating of  trend with a minimal seasonality, Holt's Trend Model is more applicable for this kind of a Pattern 
+
+```{r}
+modelses_trend<-HoltWinters(airmiles,gamma = FALSE)
+modelses_trend
+```
+
+For Forecasting, the level value is a recent observation and the slope of a trendis more of a past value
+
+to forecast for the next periods
+
+```{r}
+plot(modelses_trend)
+```
+```{r}
+ftrend<-forecast(modelses_trend,5)
+plot(ftrend)
+```
+```{r}
+accuracy(ftrend)
+```
+
+to see forecast values
+
+```{r}
+ftrend
+```
+
+
+##Holt's trend Model for Airpassenger data
+
+```{r}
+plot(AirPassengers)
+```
+
+
+```{r}
+modelap_trend<-HoltWinters(AirPassengers,gamma = FALSE)
+modelap_trend
+```
+
+```{r}
+aptrend<-forecast(modelap_trend,12)
+accuracy(aptrend)
+```
+
+```{r}
+plot(aptrend)
+```
+
+Last 5 years data of Airpassengers
+
+```{r}
+plot(ap)
+```
+
+```{r}
+ap_holt_trend<-HoltWinters(ap,gamma = FALSE)
+ap_holt_trend
+```
+
+```{r}
+aptrendf<-forecast(ap_holt_trend,12)
+accuracy(aptrendf)
+```
+
+```{r}
+plot(aptrendf)
+```
+
+# Holt winters Model
+
+This model takes care of level, trend and seasonality
+
+Dataset: AirPassengers
+
+```{r}
+ap_winter<-HoltWinters(AirPassengers)
+ap_winter
+```
+
+```{r}
+ap_winterf<-forecast(ap_winter,12)
+accuracy(ap_winterf)
+```
+
+```{r}
+plot(ap_winterf)
+```
+For last 5 years
+
+
+```{r}
+ap_winter_trend<-HoltWinters(ap)
+apf<-forecast(ap_winter_trend,12)
+accuracy(apf)
+```
+
+```{r}
+plot(apf)
+```
+
+# case study - Shoe Sales
+
+```{r}
+library(readxl)
+shoesales<-read_xlsx(file.choose())
+head(shoesales)
+shoesales<-shoesales[,3]
+shoe_ts<-ts(shoesales,start = c(2011,1),end = c(2015,12),frequency = 12)
+shoe_ts
+```
+
+```{r}
+plot(shoe_ts)
+```
+
+##Holts Winter
+
+```{r}
+shoe_ts_holt<-HoltWinters(shoe_ts)
+shoe_ts_holt
+```
+```{r}
+shoe_ts_f<-forecast(shoe_ts_holt,5)
+accuracy(shoe_ts_f)
+```
+
+```{r}
+plot(shoe_ts_f)
+```
+```{r}
+shapiro.test(shoe_ts_f$residuals)
+```
+```{r}
+Box.test(shoe_ts_f$residuals)
+```
+
+## Arima
+
+```{r}
+plot(diff(diff(log(shoe_ts))))
+abline(h=0)
+```
+```{r}
+kpss.test(diff(shoe_ts))
+```
+
+```{r}
+acf(diff(diff(log(shoe_ts))))
+```
+
+q=1
+
+```{r}
+pacf(diff(diff(log(shoe_ts))))
+```
+
+p=4
+
+```{r}
+shoe_ts_arima<-arima(log(shoe_ts),c(4,2,1),seasonal = list(order=c(1,1,1),period=12))
+shoe_ts_arima
+```
+```{r}
+shoe_ts_arima_f<-forecast(shoe_ts_arima,5)
+accuracy(shoe_ts_arima_f)
+```
+```{r}
+plot(shoe_ts_arima_f)
+```
+
+```{r}
+shapiro.test(shoe_ts_arima_f$residuals)
+```
+
+```{r}
+Box.test(shoe_ts_arima_f$residuals)
+```
+
+
+# Decomposition of Timeseries
+
+A Timeseries can be broen doen into the following component
+> Trend
+> Seasonal/Cyclical
+> Irregualr
+
+there are two models
+> Additive model
+
+Yt=Trend+Seasonal+irreguar
+
+> Multiplicative Model
+
+Yt=Trend* Seasonal *irreguar
+
+when Decomposition is done, you need to specifywhether the model is additive or multiplicative, by default the decompose() in r takes the additive model
+
+Function:Seasonplot<< Forecast Package
+
+this function gives a view of the seasonality in the data
+```{r}
+seasonplot(AirPassengers,col = rainbow(12))
+```
+
+
+The seasonality effect is more positive during the months of July and August every year
+
+###Decomposition of TimeSeries data
+
+```{r}
+decom<-decompose(AirPassengers)
+decom
+```
+
+By Default, decompositon performed is on the Additive model
+
+```{r}
+plot(decom)
+```
+
+Arima is better to use when there irregularities(random) in data
+
+### Decomposition of Shoe Sales
+
+```{r}
+shoe_decomp<-decompose(shoe_ts)
+plot(shoe_decomp)
+```
+```{r}
+seasonplot(shoe_ts,col = rainbow(12))
+```
+
+
+### if the model is multiplicative
+
+
+```{r}
+decom_mul<-decompose(AirPassengers,type = "multiplicative")
+plot(decom_mul)
+```
+
+If seasonality increase with time then model is multiplicative.
+
+By performing Decomposing, make different datasets for Trend, Seasonal and random
+
+run different models on 3 different datasets as below and add or multiply results of 3 models based on Model type
+
+Trend- Holts trend
+Seasonal- Holts winter
+Random- Arima
+
+
+### To superimpose
+
+to plot the original dataset with the decomposed values
+
+To superimpose trend and random
+
+lines(decom$trend+decom$random,col=2,lwd=2)
+
+
+```{r}
+plot(AirPassengers,lwd=2)
+lines(decom$trend+decom$random,col=2,lwd=2)
+lines(decom$trend,col=3,lwd=2)
+lines(decom$seasonal,col=6,lwd=2)
+# lWd== Line width
+```
+black--original
+
+red line represent trend and random
+
+green line --trend
+
+### Decompose for ShoeSales
+
+```{r}
+plot(shoe_ts,lwd=2)
+sdecom<-decompose(shoe_ts,type = "multiplicative")
+lines(sdecom$trend*decom$random,col=2,lwd=2)
+lines(sdecom$trend,col=3,lwd=2)
+lines(sdecom$seasonal,col=6,lwd=2)
+```
+

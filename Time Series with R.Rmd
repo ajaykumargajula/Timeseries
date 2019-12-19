@@ -1,0 +1,181 @@
+---
+title: "Multiple Time Series"
+author: "Ajay Kumar G"
+date: "29 April 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+The number of international passenger bookings (in thousands) per month on an airline (Pan Am) in the United States were obtained from the Federal Aviation Administration for the period 1949-1960 (Brown, 1963). The company used the data to predict future demand before ordering new aircraft and training aircrew. The data are available as a time series in R and illustrate several important concepts that arise in an exploratory time series analysis.
+
+```{r}
+
+data(AirPassengers)
+Ap<-AirPassengers
+Ap
+class(Ap)
+start(Ap)
+end(Ap)
+frequency(Ap)
+```
+
+* The object is of class ts, which is an abbreviation for 'timeseries'. 
+* Time series objects have a number of methods available, which include the functions start, end and frequency given above
+
+### Create a Time plot with generic plot function
+
+```{r}
+plot(Ap,ylab="Passengers (1000's)")
+abline(reg=lm(Ap~time(Ap)))
+```
+
+Observation:
+
+### Trend:
+In general, a systematic change in a time series that does not appear to be periodic is known as a trend. The simplest model for a trend is a linear increase or decrease, and this is often an adequate approximation. The number of passengers travelling on the airline is increasing with time
+
+
+### Seasonal:
+A repeating pattern within each year is known as seasonal variation, although the term is applied more generally to repeating patterns within any fixed period, such as restaurant bookings on different days of the week. There is clear seasonal variation in the air passenger time series. At the time, bookings were highest during the summer months of June, July, and August and lowest during the autumn month of November and winter month of February.
+
+
+Plots can be put in a single graphics window using the layout function, which takes as input a vector (or matrix) for the location of each plot in the display window.
+
+```{r}
+layout(1:2)
+plot(aggregate(Ap))
+boxplot(Ap~cycle(Ap))
+```
+
+* To get a clearer view of the trend, the seasonal effect can be removed by aggregating the data to the annual level, which can be achieved in R using the aggregate function.
+* A summary of the values for each season can be viewed using a boxplot, with the cycle function being used to extract the seasons for each item of data.
+
+You can see an increasing trend in the annual series and the seasonal effects in the boxplot. More people travelled during the summer months of June to September
+
+```{r}
+www<-"D:\\BABI\\GL\\Time Series\\Maine.dat"
+maine.table<-read.table(www,header = T)
+attach(maine.table)
+class(maine.table)
+```
+
+When we read data in this way from an ASCII text file, the 'class' is not time series but data.frame. The ts function is used to convert the data to a time series object.
+
+```{r}
+maine.month.ts<-ts(unemploy,start = c(1996,1),frequency = 12)
+class(maine.month.ts)
+maine.annual.ts<-aggregate(maine.month.ts)/12
+```
+
+```{r}
+layout(1:2)
+plot(maine.month.ts,ylab="month_unemployed (%)")
+plot(maine.annual.ts,ylab="Annual_unemployed (%)")
+
+```
+
+We can calculate the precise percentages in R, using window. This function will extract that part of the time series between specified start and end points and will sample with an interval equal to frequency if its argument is set to TRUE
+
+```{r}
+maine.feb<-window(maine.month.ts,start=c(1996,2),freq=T)
+maine.aug<-window(maine.month.ts,start=c(1996,8),freq=T)
+feb.ratio<-mean(maine.feb)/mean(maine.month.ts)
+aug.ratio<-mean(maine.aug)/mean(maine.month.ts)
+print(paste("Feb: ", feb.ratio))
+print(paste0("Aug:", aug.ratio))
+```
+On average, unemployment is 22% higher in February and 18% lower in August
+
+```{r}
+USunemp<-read.table("D:\\BABI\\GL\\Time Series\\USunemp.dat",header = T)
+attach(USunemp)
+USunemp.ts<-ts(USunemp,start = c(1996,1),end=c(2006,10),frequency = 12)
+plot(USunemp.ts,ylab="Unemployed %")
+```
+
+
+
+```{r}
+cbe<-read.table("D:\\BABI\\GL\\Time Series\\cbe.dat",header = T)
+str(cbe)
+class(cbe)
+```
+```{r}
+choc.ts<-ts(cbe[,1],start = 1958,frequency = 12)
+beer.ts<-ts(cbe[,2],start = 1958,frequency = 12)
+elec.ts<-ts(cbe[,3],start = 1958,frequency = 12)
+cbe.ts<-cbind(choc.ts,beer.ts,elec.ts)
+plot(cbe.ts)
+```
+
+There are many functions in R for handling more than one series, including ts.intersect to obtain the intersection of two series that overlap in time.
+
+```{r}
+data("AirPassengers")
+Ap<-AirPassengers
+Ap.cbe<-ts.intersect(Ap,elec.ts)
+Ap.cbe
+Ap<-Ap.cbe[,1]
+elec<-Ap.cbe[,2]
+layout(1:2)
+plot(Ap, main = "", ylab = "Air passengers / 1000's")
+plot(elec, main = "", ylab = "Electricity production / MkWh")
+```
+
+```{r}
+
+plot(as.vector(Ap), as.vector(elec), xlab = "Air passengers / 1000's",ylab = "Electricity production / MWh")
+abline(reg = lm(elec~Ap))
+```
+```{r}
+cor(Ap,elec)
+```
+
+```{r}
+z<-read.table("D:\\BABI\\GL\\Time Series\\pounds_nz.dat")
+head(z)
+z.ts<-ts(z,start=1991,frequency = 4)
+plot(z.ts,xlab="time/years",ylab = "Quaterly Exchange in $Nz/Pound")
+```
+
+Short-term trends are apparent in the time series: After an initial surge ending in 1992, a negative trend leads to a minimum around 1996, which is followed by a positive trend in the second half of the series.
+
+The trend seems to change direction at unpredictable times rather than displaying the relatively consistent pattern of the air passenger series and Australian production series. Such trends have been termed stochastic trends to emphasise this randomness and to distinguish them from more deterministic trends like those seen in the previous examples. A mathematical model known as a random walk can sometimes provide a good fit to data like these and is fitted to this series . Stochastic trends are common in financial series.
+
+```{r}
+z.92.96<-window(z.ts,start=c(1992,1),end=c(1996,1))
+z.96.98<-window(z.ts,start=c(1996,1),end=c(1998,1))
+layout(1,2)
+plot(z.92.96)
+plot(z.96.98)
+
+```
+
+Two local trends are emphasised when the series is partitioned into two subseries based on the periods 1992-1996 and 1996-1998. The window function can be used to extract the subseries.
+
+Now suppose we were observing this series at the start of 1992; i.e., we had the data in. It might have been tempting to predict  continuation of the downward trend for future years. However, this would have been a very poor prediction, as Figure  shows that the data started to follow an increasing trend. Likewise, without additional information, it would also be inadvisable to extrapolate the trend . This illustrates the potential pitfall of inappropriate extrapolation of stochastic trends when underlying causes are not properly understood. To reduce the risk of making an inappropriate forecast, statistical tests can be used to test for a stochastic trend.
+
+### Global Temperature Series
+
+```{r}
+globalt<-read.table("D:\\BABI\\GL\\Time Series\\global.dat",header = T)
+globalt.ts<-ts(globalt,start = c(1856,1),end=c(2005,12),frequency = 12)
+globalt.ts.annual<-aggregate(globalt.ts,FUN=mean)
+layout(1,2)
+library(zoo)
+k <- ncol(globalt.ts)
+l <- ncol(globalt.ts.annual)
+plot(as.zoo(globalt.ts),screen = 1, col = 1:k)
+plot(as.zoo(globalt.ts.annual), screen = 1, col = 1:l)
+```
+
+It is the trend that is of most concern, so the aggregate function is used to remove any seasonal effects within each year and produce an annual series of mean temperatures for the period 1856 to 2005. We can avoid explicitly dividing by 12 if we specify FUN=mean in the aggregate function.
+
+The upward trend from about 1970 onwards has been used as evidence of global warming . In the code below, the monthly time intervals corresponding to the 36-year period 1970-2005 are extracted using the time function and the associated observed temperature series extracted using window. The data are plotted and a line superimposed using a regression of temperature on the new time index .
+
+```{r}
+
+```
+
